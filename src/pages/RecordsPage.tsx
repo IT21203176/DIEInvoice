@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import type { ColumnDefinition } from "../types";
@@ -15,6 +15,14 @@ function emptyValues(columns: ColumnDefinition[]) {
   return values;
 }
 
+function HomeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.5 10.5 12 3.5l8.5 7v9a1.5 1.5 0 0 1-1.5 1.5h-5v-6h-4v6H5a1.5 1.5 0 0 1-1.5-1.5v-9Z" />
+    </svg>
+  );
+}
+
 export default function RecordsPage() {
   const navigate = useNavigate();
   const [columns, setColumns] = useState<ColumnDefinition[]>([]);
@@ -24,8 +32,6 @@ export default function RecordsPage() {
   const [error, setError] = useState("");
   const [addColOpen, setAddColOpen] = useState(false);
   const [editingCol, setEditingCol] = useState<ColumnDefinition | null>(null);
-  const [importing, setImporting] = useState(false);
-  const importInputRef = useRef<HTMLInputElement>(null);
 
   const visibleColumns = useMemo(() => {
     const seen = new Set<string>();
@@ -36,11 +42,11 @@ export default function RecordsPage() {
     });
   }, [columns]);
 
-  const infoColumns = useMemo(
+  const leftColumns = useMemo(
     () => visibleColumns.filter((c) => !c.isCharge && c.key !== "advanceRs"),
     [visibleColumns]
   );
-  const chargeColumns = useMemo(
+  const rightColumns = useMemo(
     () => visibleColumns.filter((c) => c.isCharge || c.key === "advanceRs"),
     [visibleColumns]
   );
@@ -85,25 +91,6 @@ export default function RecordsPage() {
     }
   }
 
-  async function importExcel(file: File) {
-    setImporting(true);
-    setError("");
-    try {
-      const result = await api.importExcel(file);
-      const extra = result.unmatchedHeaders.length
-        ? ` Skipped unmatched columns: ${result.unmatchedHeaders.join(", ")}.`
-        : "";
-      alert(
-        `Imported ${result.inserted} record(s). ${result.skippedDuplicates} duplicate invoice number(s) skipped.${extra}`
-      );
-      navigate("/invoices");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Import failed");
-    } finally {
-      setImporting(false);
-    }
-  }
-
   async function saveColumnEdit() {
     if (!editingCol) return;
     await api.updateColumn(editingCol._id, { label: editingCol.label, isCharge: editingCol.isCharge });
@@ -144,7 +131,7 @@ export default function RecordsPage() {
           type="date"
           value={toDateInput(values[col.key])}
           onChange={(e) => setField(col.key, e.target.value)}
-          className="w-full bg-transparent px-2 py-1.5 outline-none"
+          className="w-full bg-transparent px-2 py-2 outline-none"
         />
       );
     }
@@ -155,7 +142,7 @@ export default function RecordsPage() {
           step="0.01"
           value={values[col.key] === "" || values[col.key] == null ? "" : String(values[col.key])}
           onChange={(e) => setField(col.key, e.target.value)}
-          className="w-full bg-transparent px-2 py-1.5 text-right outline-none"
+          className="w-full bg-transparent px-2 py-2 text-right outline-none"
         />
       );
     }
@@ -163,52 +150,43 @@ export default function RecordsPage() {
       <input
         value={String(values[col.key] ?? "")}
         onChange={(e) => setField(col.key, e.target.value)}
-        className="w-full bg-transparent px-2 py-1.5 outline-none"
+        className="w-full bg-transparent px-2 py-2 outline-none"
       />
     );
+  }
+
+  function renderRows(cols: ColumnDefinition[]) {
+    return cols.map((col) => (
+      <tr key={col.key} className="h-11 border-t border-black/10">
+        <th className="w-[40%] bg-paper/80 px-3 py-0 text-left align-middle font-medium text-navy">{renderLabel(col)}</th>
+        <td className="px-1 py-0 align-middle">{renderFieldInput(col)}</td>
+      </tr>
+    ));
   }
 
   return (
     <div className="min-h-screen">
       <header className="no-print border-b border-black/10 bg-navy text-white">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-4">
-          <div>
-            <Link to="/" className="text-xs text-white/70 hover:underline">
-              ← Home
-            </Link>
-            <h1 className="font-serif text-2xl tracking-wide">Add Invoice Record</h1>
-            <p className="text-xs text-white/70">Enter details and save a new invoice</p>
+        <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-4">
+          <Link
+            to="/"
+            aria-label="Home"
+            title="Home"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-white hover:bg-white/10"
+          >
+            <HomeIcon />
+          </Link>
+          <div className="min-w-0 flex-1">
+            <h1 className="font-serif text-2xl leading-tight tracking-wide">Add Invoice Record</h1>
+            <p className="text-xs leading-tight text-white/70">Enter details and save a new invoice</p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              ref={importInputRef}
-              type="file"
-              accept=".xlsx"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                e.target.value = "";
-                if (file) void importExcel(file);
-              }}
-            />
-            <button
-              disabled={importing}
-              onClick={() => importInputRef.current?.click()}
-              className="rounded-md bg-white/10 px-3 py-2 text-sm hover:bg-white/20 disabled:opacity-50"
-            >
-              {importing ? "Importing…" : "Import Excel"}
-            </button>
-            <button onClick={() => setAddColOpen(true)} className="rounded-md bg-white/10 px-3 py-2 text-sm hover:bg-white/20">
-              Add Column
-            </button>
-            <Link to="/invoices" className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-navy">
-              View Invoices
-            </Link>
-          </div>
+          <button onClick={() => setAddColOpen(true)} className="shrink-0 rounded-md bg-white/10 px-3 py-2 text-sm hover:bg-white/20">
+            Add Column
+          </button>
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 py-4">
+      <main className="mx-auto max-w-6xl px-4 py-4">
         {error && (
           <div className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
         )}
@@ -258,38 +236,28 @@ export default function RecordsPage() {
                 {saving ? "Saving…" : "Save Invoice"}
               </button>
             </div>
-            <table className="w-full border-collapse text-sm">
-              <tbody>
-                {infoColumns.map((col) => (
-                  <tr key={col.key} className="border-t border-black/10">
-                    <th className="w-[38%] bg-paper/80 px-3 py-2 text-left align-middle font-medium text-navy">
-                      {renderLabel(col)}
-                    </th>
-                    <td className="px-1 py-0.5">{renderFieldInput(col)}</td>
+            <div className="grid lg:grid-cols-2">
+              <table className="w-full border-collapse text-sm lg:border-r lg:border-black/10">
+                <tbody>{renderRows(leftColumns)}</tbody>
+              </table>
+              <table className="w-full border-collapse text-sm">
+                <tbody>
+                  {renderRows(rightColumns)}
+                  <tr className="h-11 border-t border-black/20 bg-paper/50">
+                    <th className="w-[40%] px-3 py-0 text-left align-middle font-semibold text-navy">Total Rs.</th>
+                    <td className="px-3 py-0 text-right align-middle font-semibold">
+                      {totals.totalRs ? totals.totalRs.toLocaleString("en-US") : ""}
+                    </td>
                   </tr>
-                ))}
-                {chargeColumns.map((col) => (
-                  <tr key={col.key} className="border-t border-black/10">
-                    <th className="w-[38%] bg-paper/80 px-3 py-2 text-left align-middle font-medium text-navy">
-                      {renderLabel(col)}
-                    </th>
-                    <td className="px-1 py-0.5">{renderFieldInput(col)}</td>
+                  <tr className="h-11 border-t border-black/10 bg-paper/50">
+                    <th className="w-[40%] px-3 py-0 text-left align-middle font-semibold text-navy">Balance Rs.</th>
+                    <td className="px-3 py-0 text-right align-middle font-semibold">
+                      {totals.balanceRs ? totals.balanceRs.toLocaleString("en-US") : ""}
+                    </td>
                   </tr>
-                ))}
-                <tr className="border-t border-black/20 bg-paper/50">
-                  <th className="px-3 py-2 text-left font-semibold text-navy">Total Rs.</th>
-                  <td className="px-3 py-2 text-right font-semibold">
-                    {totals.totalRs ? totals.totalRs.toLocaleString("en-US") : ""}
-                  </td>
-                </tr>
-                <tr className="border-t border-black/10 bg-paper/50">
-                  <th className="px-3 py-2 text-left font-semibold text-navy">Balance Rs.</th>
-                  <td className="px-3 py-2 text-right font-semibold">
-                    {totals.balanceRs ? totals.balanceRs.toLocaleString("en-US") : ""}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                </tbody>
+              </table>
+            </div>
           </section>
         )}
       </main>
