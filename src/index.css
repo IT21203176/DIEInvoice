@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  @apply bg-paper text-ink antialiased;
+}
+
+.print-sheet {
+  position: relative;
+  box-sizing: border-box;
+  width: 210mm;
+  height: 297mm;
+  overflow: hidden;
+  margin: 0 auto;
+  padding: 14mm 18mm 22mm;
+  background: #ffffff;
+  color: #000000;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px;
+  line-height: 1.35;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.invoice-highlight {
+  display: inline-block;
+  background-color: #fff200;
+  padding: 2px 8px;
+  line-height: 1.3;
+  font-weight: 600;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.invoice-charge-row {
+  display: grid;
+  grid-template-columns: 1fr 150px;
+  align-items: end;
+  column-gap: 32px;
+  padding: 7px 0 2px;
+}
+
+.invoice-amount {
+  width: 150px;
+  text-align: right;
+}
+
+.invoice-amount-text {
+  min-height: 1.2em;
+  padding-bottom: 4px;
+}
+
+.invoice-amount-line {
+  height: 1px;
+  width: 100%;
+  background-color: #000000;
+}
+
+.invoice-amount-line-double {
+  margin-top: 2px;
+}
+
+.invoice-totals {
+  width: 280px;
+  margin-left: auto;
+  margin-top: 28px;
+}
+
+.invoice-total-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 6px 0 2px;
+}
+
+.invoice-rule {
+  height: 1px;
+  width: 100%;
+  background-color: #000000;
+}
+
+.invoice-signature {
+  position: absolute;
+  left: 18mm;
+  bottom: 16mm;
+  width: 190px;
+}
+
+.invoice-signature-line {
+  height: 12px;
+  border-bottom: 1px dotted #000000;
+}
+
+.invoice-signature-label {
+  margin-top: 6px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@media print {
+  body {
+    background: white !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-sheet {
+    box-shadow: none !important;
+    margin: 0 !important;
+  }
+}
+
+@page {
+  size: A4;
+  margin: 0;
+}
