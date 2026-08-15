@@ -1,26 +1,29 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
-import type { ColumnDefinition, InvoiceRecord } from "../types";
+import type { ColumnDefinition } from "../types";
 import { computeTotals, toDateInput } from "../format";
 import AddColumnModal from "../components/AddColumnModal";
 
+function emptyValues(columns: ColumnDefinition[]) {
+  const today = new Date().toISOString().slice(0, 10);
+  const values: Record<string, unknown> = {};
+  for (const col of columns) {
+    if (col.key === "balanceRs") continue;
+    values[col.key] = col.key === "date" ? today : "";
+  }
+  return values;
+}
+
 export default function RecordsPage() {
+  const navigate = useNavigate();
   const [columns, setColumns] = useState<ColumnDefinition[]>([]);
-  const [items, setItems] = useState<InvoiceRecord[]>([]);
-  const [q, setQ] = useState("");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [pages, setPages] = useState(1);
-  const [total, setTotal] = useState(0);
+  const [values, setValues] = useState<Record<string, unknown>>({});
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [addColOpen, setAddColOpen] = useState(false);
   const [editingCol, setEditingCol] = useState<ColumnDefinition | null>(null);
-  const [drafts, setDrafts] = useState<Record<string, Record<string, unknown>>>({});
-  const draftsRef = useRef(drafts);
-  draftsRef.current = drafts;
-  const [savingId, setSavingId] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
 
@@ -33,60 +36,52 @@ export default function RecordsPage() {
     });
   }, [columns]);
 
-  async function load(nextPage = page, nextQ = search) {
+  const infoColumns = useMemo(
+    () => visibleColumns.filter((c) => !c.isCharge && c.key !== "advanceRs"),
+    [visibleColumns]
+  );
+  const chargeColumns = useMemo(
+    () => visibleColumns.filter((c) => c.isCharge || c.key === "advanceRs"),
+    [visibleColumns]
+  );
+
+  const totals = useMemo(() => computeTotals(values, columns), [values, columns]);
+
+  async function loadColumns() {
     setLoading(true);
     setError("");
     try {
-      const [cols, list] = await Promise.all([api.listColumns(), api.listInvoices(nextQ, nextPage)]);
+      const cols = await api.listColumns();
       setColumns(cols);
-      setItems(list.items);
-      setPages(list.pages);
-      setTotal(list.total);
-      setPage(list.page);
+      setValues((prev) => {
+        const next = emptyValues(cols);
+        return Object.keys(prev).length ? { ...next, ...prev } : next;
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load data");
+      setError(err instanceof Error ? err.message : "Failed to load columns");
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    void load(1, search);
-  }, [search]);
+    void loadColumns();
+  }, []);
 
-  useEffect(() => {
-    const t = setTimeout(() => setSearch(q), 300);
-    return () => clearTimeout(t);
-  }, [q]);
-
-  function rowValues(row: InvoiceRecord) {
-    return { ...row.values, ...(drafts[row.id] ?? {}) };
+  function setField(key: string, value: unknown) {
+    setValues((prev) => ({ ...prev, [key]: value }));
   }
 
-  function setCell(row: InvoiceRecord, key: string, value: unknown) {
-    setDrafts((prev) => ({
-      ...prev,
-      [row.id]: { ...(prev[row.id] ?? {}), [key]: value },
-    }));
-  }
-
-  async function persist(row: InvoiceRecord, extra: Record<string, unknown> = {}) {
-    const draft = { ...(draftsRef.current[row.id] ?? {}), ...extra };
-    if (Object.keys(draft).length === 0) return;
-    setSavingId(row.id);
+  async function saveRecord() {
+    setSaving(true);
+    setError("");
     try {
-      const values = { ...row.values, ...draft };
-      const updated = await api.updateInvoice(row.id, { values });
-      setItems((prev) => prev.map((r) => (r.id === row.id ? updated : r)));
-      setDrafts((prev) => {
-        const next = { ...prev };
-        delete next[row.id];
-        return next;
-      });
+      const created = await api.createInvoice({ values });
+      navigate(`/invoice/${created.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
     } finally {
-      setSavingId(null);
+      setSaving(false);
     }
   }
 
@@ -101,7 +96,7 @@ export default function RecordsPage() {
       alert(
         `Imported ${result.inserted} record(s). ${result.skippedDuplicates} duplicate invoice number(s) skipped.${extra}`
       );
-      await load(1, search);
+      navigate("/invoices");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Import failed");
     } finally {
@@ -109,77 +104,18 @@ export default function RecordsPage() {
     }
   }
 
-  async function addRecord() {
-    const today = new Date().toISOString().slice(0, 10);
-    const created = await api.createInvoice({
-      values: { date: today, invoiceNo: String(total + 1) },
-    });
-    setItems((prev) => [created, ...prev]);
-    setTotal((n) => n + 1);
-  }
-
-  async function removeRecord(id: string) {
-    if (!confirm("Delete this invoice record?")) return;
-    await api.deleteInvoice(id);
-    setItems((prev) => prev.filter((r) => r.id !== id));
-    setTotal((n) => n - 1);
-  }
-
   async function saveColumnEdit() {
     if (!editingCol) return;
     await api.updateColumn(editingCol._id, { label: editingCol.label, isCharge: editingCol.isCharge });
     setEditingCol(null);
-    await load(page, search);
-  }
-
-  const infoColumns = useMemo(
-    () => visibleColumns.filter((c) => !c.isCharge && c.key !== "advanceRs"),
-    [visibleColumns]
-  );
-  const chargeColumns = useMemo(
-    () => visibleColumns.filter((c) => c.isCharge || c.key === "advanceRs"),
-    [visibleColumns]
-  );
-
-  function renderFieldInput(row: InvoiceRecord, col: ColumnDefinition, values: Record<string, unknown>) {
-    if (col.type === "date") {
-      return (
-        <input
-          type="date"
-          value={toDateInput(values[col.key])}
-          onChange={(e) => setCell(row, col.key, e.target.value)}
-          onBlur={(e) => void persist(row, { [col.key]: e.target.value })}
-          className="w-full bg-transparent px-2 py-1.5 outline-none"
-        />
-      );
-    }
-    if (col.type === "float") {
-      return (
-        <input
-          type="number"
-          step="0.01"
-          value={values[col.key] === "" || values[col.key] == null ? "" : String(values[col.key])}
-          onChange={(e) => setCell(row, col.key, e.target.value)}
-          onBlur={(e) => void persist(row, { [col.key]: e.target.value })}
-          className="w-full bg-transparent px-2 py-1.5 text-right outline-none"
-        />
-      );
-    }
-    return (
-      <input
-        value={String(values[col.key] ?? "")}
-        onChange={(e) => setCell(row, col.key, e.target.value)}
-        onBlur={(e) => void persist(row, { [col.key]: e.target.value })}
-        className="w-full bg-transparent px-2 py-1.5 outline-none"
-      />
-    );
+    await loadColumns();
   }
 
   async function removeColumn(col: ColumnDefinition) {
     if (col.isSystem) return;
     if (!confirm(`Remove column "${col.label}"? Data in this column will be deleted.`)) return;
     await api.deleteColumn(col._id);
-    await load(page, search);
+    await loadColumns();
   }
 
   function renderLabel(col: ColumnDefinition) {
@@ -201,6 +137,37 @@ export default function RecordsPage() {
     );
   }
 
+  function renderFieldInput(col: ColumnDefinition) {
+    if (col.type === "date") {
+      return (
+        <input
+          type="date"
+          value={toDateInput(values[col.key])}
+          onChange={(e) => setField(col.key, e.target.value)}
+          className="w-full bg-transparent px-2 py-1.5 outline-none"
+        />
+      );
+    }
+    if (col.type === "float") {
+      return (
+        <input
+          type="number"
+          step="0.01"
+          value={values[col.key] === "" || values[col.key] == null ? "" : String(values[col.key])}
+          onChange={(e) => setField(col.key, e.target.value)}
+          className="w-full bg-transparent px-2 py-1.5 text-right outline-none"
+        />
+      );
+    }
+    return (
+      <input
+        value={String(values[col.key] ?? "")}
+        onChange={(e) => setField(col.key, e.target.value)}
+        className="w-full bg-transparent px-2 py-1.5 outline-none"
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen">
       <header className="no-print border-b border-black/10 bg-navy text-white">
@@ -210,18 +177,9 @@ export default function RecordsPage() {
               ← Home
             </Link>
             <h1 className="font-serif text-2xl tracking-wide">Add Invoice Record</h1>
-            <p className="text-xs text-white/70">Enter and save invoice data</p>
+            <p className="text-xs text-white/70">Enter details and save a new invoice</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search M/s, invoice, chassis, vessel…"
-              className="w-64 rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/50 outline-none"
-            />
-            <button onClick={() => void addRecord()} className="rounded-md bg-gold px-3 py-2 text-sm font-semibold text-navy">
-              Add Record
-            </button>
             <input
               ref={importInputRef}
               type="file"
@@ -284,92 +242,56 @@ export default function RecordsPage() {
           </div>
         )}
 
-        {loading && items.length === 0 ? (
+        {loading ? (
           <div className="rounded-lg border border-black/10 bg-white px-4 py-10 text-center text-gray-500">
-            Loading records…
-          </div>
-        ) : items.length === 0 ? (
-          <div className="rounded-lg border border-black/10 bg-white px-4 py-10 text-center text-gray-500">
-            No records yet. Click Add Record to create an invoice.
+            Loading form…
           </div>
         ) : (
-          <div className="space-y-6">
-            {items.map((row) => {
-              const values = rowValues(row);
-              const totals = computeTotals(values, columns);
-              return (
-                <section key={row.id} className="overflow-hidden rounded-lg border border-black/10 bg-white shadow-sm">
-                  <div className="flex flex-wrap items-center justify-between gap-2 bg-navy px-4 py-3 text-white">
-                    <div className="text-sm">
-                      <span className="font-semibold">INV # {String(values.invoiceNo ?? "") || "—"}</span>
-                      <span className="mx-2 text-white/40">·</span>
-                      <span>{String(values.ms ?? "") || "New record"}</span>
-                      {savingId === row.id && <span className="ml-2 text-[10px] text-white/60">saving</span>}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => void removeRecord(row.id)} className="rounded bg-white/10 px-3 py-1.5 text-xs">
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                  <table className="w-full border-collapse text-sm">
-                    <tbody>
-                      {infoColumns.map((col) => (
-                        <tr key={col.key} className="border-t border-black/10">
-                          <th className="w-[38%] bg-paper/80 px-3 py-2 text-left align-middle font-medium text-navy">
-                            {renderLabel(col)}
-                          </th>
-                          <td className="px-1 py-0.5">{renderFieldInput(row, col, values)}</td>
-                        </tr>
-                      ))}
-                      {chargeColumns.map((col) => (
-                        <tr key={col.key} className="border-t border-black/10">
-                          <th className="w-[38%] bg-paper/80 px-3 py-2 text-left align-middle font-medium text-navy">
-                            {renderLabel(col)}
-                          </th>
-                          <td className="px-1 py-0.5">{renderFieldInput(row, col, values)}</td>
-                        </tr>
-                      ))}
-                      <tr className="border-t border-black/20 bg-paper/50">
-                        <th className="px-3 py-2 text-left font-semibold text-navy">Total Rs.</th>
-                        <td className="px-3 py-2 text-right font-semibold">
-                          {totals.totalRs ? totals.totalRs.toLocaleString("en-US") : ""}
-                        </td>
-                      </tr>
-                      <tr className="border-t border-black/10 bg-paper/50">
-                        <th className="px-3 py-2 text-left font-semibold text-navy">Balance Rs.</th>
-                        <td className="px-3 py-2 text-right font-semibold">
-                          {totals.balanceRs ? totals.balanceRs.toLocaleString("en-US") : ""}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </section>
-              );
-            })}
-          </div>
+          <section className="overflow-hidden rounded-lg border border-black/10 bg-white shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2 bg-navy px-4 py-3 text-white">
+              <div className="text-sm font-semibold">New invoice</div>
+              <button
+                disabled={saving}
+                onClick={() => void saveRecord()}
+                className="rounded bg-gold px-3 py-1.5 text-sm font-semibold text-navy disabled:opacity-50"
+              >
+                {saving ? "Saving…" : "Save Invoice"}
+              </button>
+            </div>
+            <table className="w-full border-collapse text-sm">
+              <tbody>
+                {infoColumns.map((col) => (
+                  <tr key={col.key} className="border-t border-black/10">
+                    <th className="w-[38%] bg-paper/80 px-3 py-2 text-left align-middle font-medium text-navy">
+                      {renderLabel(col)}
+                    </th>
+                    <td className="px-1 py-0.5">{renderFieldInput(col)}</td>
+                  </tr>
+                ))}
+                {chargeColumns.map((col) => (
+                  <tr key={col.key} className="border-t border-black/10">
+                    <th className="w-[38%] bg-paper/80 px-3 py-2 text-left align-middle font-medium text-navy">
+                      {renderLabel(col)}
+                    </th>
+                    <td className="px-1 py-0.5">{renderFieldInput(col)}</td>
+                  </tr>
+                ))}
+                <tr className="border-t border-black/20 bg-paper/50">
+                  <th className="px-3 py-2 text-left font-semibold text-navy">Total Rs.</th>
+                  <td className="px-3 py-2 text-right font-semibold">
+                    {totals.totalRs ? totals.totalRs.toLocaleString("en-US") : ""}
+                  </td>
+                </tr>
+                <tr className="border-t border-black/10 bg-paper/50">
+                  <th className="px-3 py-2 text-left font-semibold text-navy">Balance Rs.</th>
+                  <td className="px-3 py-2 text-right font-semibold">
+                    {totals.balanceRs ? totals.balanceRs.toLocaleString("en-US") : ""}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
         )}
-
-        <div className="mt-3 flex items-center justify-between text-sm text-gray-600">
-          <span>
-            {total} record{total === 1 ? "" : "s"}
-          </span>
-          <div className="flex gap-2">
-            <button disabled={page <= 1} onClick={() => void load(page - 1, search)} className="rounded border px-2 py-1 disabled:opacity-40">
-              Previous
-            </button>
-            <span>
-              Page {page} of {pages}
-            </span>
-            <button
-              disabled={page >= pages}
-              onClick={() => void load(page + 1, search)}
-              className="rounded border px-2 py-1 disabled:opacity-40"
-            >
-              Next
-            </button>
-          </div>
-        </div>
       </main>
 
       <AddColumnModal
@@ -377,7 +299,7 @@ export default function RecordsPage() {
         onClose={() => setAddColOpen(false)}
         onSubmit={async (payload) => {
           await api.addColumn(payload);
-          await load(page, search);
+          await loadColumns();
         }}
       />
     </div>
