@@ -107,7 +107,7 @@ export default function InvoiceDocument({
 }: Props) {
   const values = editing ? draft : record.values;
   const chargeCols = useMemo(
-    () => columns.filter((c) => c.isCharge && c.type === "float"),
+    () => columns.filter((c) => c.isCharge && c.type === "float" && c.key !== "advanceRs" && c.key !== "balanceRs"),
     [columns]
   );
   const infoCols = useMemo(

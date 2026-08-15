@@ -47,8 +47,11 @@ columnsRouter.post("/", async (req, res) => {
     key = `${key}_${Date.now().toString(36)}`;
   }
 
-  const last = await Column.findOne().sort({ order: -1 });
-  const order = Math.max(last?.order ?? 0, 140) + 10;
+  const lastBeforeTotals = await Column.findOne({
+    key: { $nin: ["advanceRs", "balanceRs"] },
+    order: { $lt: 900 },
+  }).sort({ order: -1 });
+  const order = Math.max(lastBeforeTotals?.order ?? 140, 140) + 10;
 
   const column = await Column.create({
     key,

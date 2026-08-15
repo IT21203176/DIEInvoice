@@ -39,6 +39,20 @@ async function seedOnce() {
     );
   }
 
+  await Column.updateOne({ key: "advanceRs" }, { $set: { order: 900, isCharge: false } });
+  await Column.updateOne({ key: "balanceRs" }, { $set: { order: 910, isCharge: false } });
+
+  const customColumns = await Column.find({ isSystem: false }).sort({ order: 1, createdAt: 1 });
+  const lastSystemCharge = await Column.findOne({ isSystem: true, isCharge: true }).sort({ order: -1 });
+  let nextOrder = Math.max(lastSystemCharge?.order ?? 140, 140) + 10;
+  for (const col of customColumns) {
+    if (col.order !== nextOrder) {
+      col.order = nextOrder;
+      await col.save();
+    }
+    nextOrder += 10;
+  }
+
   const settingsCount = await Settings.countDocuments();
   if (settingsCount === 0) {
     await Settings.create({ companyName: "DIASON", documentTitle: "INVOICE" });

@@ -84,11 +84,14 @@ export default function RecordsPage() {
   }, [columns]);
 
   const leftColumns = useMemo(
-    () => visibleColumns.filter((c) => !c.isCharge && c.key !== "advanceRs"),
+    () => visibleColumns.filter((c) => !c.isCharge && c.key !== "advanceRs" && c.key !== "balanceRs"),
     [visibleColumns]
   );
   const chargeColumns = useMemo(
-    () => visibleColumns.filter((c) => c.isCharge && c.key !== "advanceRs"),
+    () =>
+      visibleColumns.filter(
+        (c) => c.isCharge && c.type === "float" && c.key !== "advanceRs" && c.key !== "balanceRs"
+      ),
     [visibleColumns]
   );
   const advanceCol = useMemo(
