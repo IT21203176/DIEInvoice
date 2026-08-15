@@ -4,6 +4,7 @@ import { api } from "../api";
 import type { ColumnDefinition } from "../types";
 import { computeTotals, formatAmount, toDateInput, toNumber } from "../format";
 import AddColumnModal from "../components/AddColumnModal";
+import HomeIcon from "../components/HomeIcon";
 
 function emptyValues(columns: ColumnDefinition[]) {
   const today = new Date().toISOString().slice(0, 10);
@@ -13,14 +14,6 @@ function emptyValues(columns: ColumnDefinition[]) {
     values[col.key] = col.key === "date" ? today : "";
   }
   return values;
-}
-
-function HomeIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3.5 10.5 12 3.5l8.5 7v9a1.5 1.5 0 0 1-1.5 1.5h-5v-6h-4v6H5a1.5 1.5 0 0 1-1.5-1.5v-9Z" />
-    </svg>
-  );
 }
 
 function MoneyInput({

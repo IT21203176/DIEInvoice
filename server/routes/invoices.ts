@@ -3,7 +3,7 @@ import multer from "multer";
 import mongoose from "mongoose";
 import { Invoice } from "../models/Invoice.js";
 import { Column } from "../models/Column.js";
-import { computeTotals } from "../totals.js";
+import { computeTotals, toNumber } from "../totals.js";
 import type { ColumnDefinition } from "../defaults.js";
 import { parseInvoiceWorkbook } from "../excelImport.js";
 
@@ -69,6 +69,65 @@ invoicesRouter.get("/", async (req, res) => {
     page,
     pages: Math.ceil(total / limit) || 1,
   });
+});
+
+invoicesRouter.get("/export", async (_req, res) => {
+  const [columns, invoices] = await Promise.all([
+    getColumns(),
+    Invoice.find().sort({ createdAt: 1 }),
+  ]);
+  const exportCols = columns.filter((c) => c.key !== "balanceRs");
+  const ExcelJS = (await import("exceljs")).default;
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet("Invoices");
+
+  sheet.columns = [
+    ...exportCols.map((col) => ({
+      header: col.label,
+      key: col.key,
+      width: col.type === "string" ? 22 : 16,
+    })),
+    { header: "Total Rs.", key: "totalRs", width: 16 },
+    { header: "Remarks", key: "remarks", width: 28 },
+  ];
+
+  for (const invoice of invoices) {
+    const values = invoice.values ?? {};
+    const row: Record<string, unknown> = { totalRs: invoice.totalRs, remarks: invoice.remarks ?? "" };
+    for (const col of exportCols) {
+      const raw = values[col.key];
+      if (col.type === "float") {
+        row[col.key] = raw === "" || raw == null ? null : toNumber(raw);
+      } else if (col.type === "date" && raw) {
+        row[col.key] = String(raw).slice(0, 10);
+      } else {
+        row[col.key] = raw == null ? "" : String(raw);
+      }
+    }
+    sheet.addRow(row);
+  }
+
+  const floatKeys = [...exportCols.filter((c) => c.type === "float").map((c) => c.key), "totalRs"];
+  sheet.eachRow((row, index) => {
+    if (index === 1) {
+      row.font = { bold: true };
+      return;
+    }
+    for (const col of sheet.columns) {
+      const key = String(col.key ?? "");
+      if (!floatKeys.includes(key)) continue;
+      const cell = row.getCell(key);
+      if (typeof cell.value === "number") {
+        cell.numFmt = "#,##0.00";
+      }
+    }
+  });
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const filename = `DIASON-invoices.xlsx`;
+  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.send(Buffer.from(buffer));
 });
 
 invoicesRouter.post("/import", upload.single("file"), async (req, res) => {

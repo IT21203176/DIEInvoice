@@ -18,6 +18,22 @@ export const api = {
   getInvoice: (id: string) => request<InvoiceRecord>(`/api/invoices/${id}`),
   createInvoice: (payload: { values: Record<string, unknown>; remarks?: string }) =>
     request<InvoiceRecord>("/api/invoices", { method: "POST", body: JSON.stringify(payload) }),
+  exportExcel: async () => {
+    const res = await fetch("/api/invoices/export");
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error((data as { error?: string }).error || "Export failed");
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "DIASON-invoices.xlsx";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  },
   importExcel: async (file: File) => {
     const body = new FormData();
     body.append("file", file);
