@@ -1,5 +1,6 @@
 import { Router } from "express";
 import multer from "multer";
+import mongoose from "mongoose";
 import { Invoice } from "../models/Invoice.js";
 import { Column } from "../models/Column.js";
 import { computeTotals } from "../totals.js";
@@ -120,6 +121,10 @@ invoicesRouter.post("/import", upload.single("file"), async (req, res) => {
 });
 
 invoicesRouter.get("/:id", async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    res.status(404).json({ error: "Invoice not found" });
+    return;
+  }
   const doc = await Invoice.findById(req.params.id);
   if (!doc) {
     res.status(404).json({ error: "Invoice not found" });
@@ -143,6 +148,10 @@ invoicesRouter.post("/", async (req, res) => {
 });
 
 invoicesRouter.patch("/:id", async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    res.status(404).json({ error: "Invoice not found" });
+    return;
+  }
   const doc = await Invoice.findById(req.params.id);
   if (!doc) {
     res.status(404).json({ error: "Invoice not found" });
@@ -166,6 +175,10 @@ invoicesRouter.patch("/:id", async (req, res) => {
 });
 
 invoicesRouter.delete("/:id", async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    res.status(404).json({ error: "Invoice not found" });
+    return;
+  }
   const doc = await Invoice.findByIdAndDelete(req.params.id);
   if (!doc) {
     res.status(404).json({ error: "Invoice not found" });
