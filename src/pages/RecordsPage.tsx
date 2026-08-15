@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import type { ColumnDefinition } from "../types";
-import { computeTotals, toDateInput } from "../format";
+import { computeTotals, formatAmount, toDateInput, toNumber } from "../format";
 import AddColumnModal from "../components/AddColumnModal";
 
 function emptyValues(columns: ColumnDefinition[]) {
@@ -20,6 +20,47 @@ function HomeIcon() {
     <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
       <path strokeLinecap="round" strokeLinejoin="round" d="M3.5 10.5 12 3.5l8.5 7v9a1.5 1.5 0 0 1-1.5 1.5h-5v-6h-4v6H5a1.5 1.5 0 0 1-1.5-1.5v-9Z" />
     </svg>
+  );
+}
+
+function MoneyInput({
+  value,
+  onChange,
+}: {
+  value: unknown;
+  onChange: (value: number | "") => void;
+}) {
+  const [focused, setFocused] = useState(false);
+  const [text, setText] = useState("");
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={focused ? text : formatAmount(value)}
+      onFocus={() => {
+        setFocused(true);
+        setText(value === "" || value == null ? "" : String(value).replace(/,/g, ""));
+      }}
+      onChange={(e) => {
+        const raw = e.target.value.replace(/[^\d.,]/g, "");
+        setText(raw);
+        if (raw.trim() === "" || raw === ".") {
+          onChange("");
+          return;
+        }
+        onChange(toNumber(raw));
+      }}
+      onBlur={() => {
+        setFocused(false);
+        if (text.trim() === "" || text === ".") {
+          onChange("");
+          return;
+        }
+        onChange(toNumber(text));
+      }}
+      className="w-full bg-transparent px-2 py-2 text-right outline-none tabular-nums"
+    />
   );
 }
 
@@ -46,8 +87,12 @@ export default function RecordsPage() {
     () => visibleColumns.filter((c) => !c.isCharge && c.key !== "advanceRs"),
     [visibleColumns]
   );
-  const rightColumns = useMemo(
-    () => visibleColumns.filter((c) => c.isCharge || c.key === "advanceRs"),
+  const chargeColumns = useMemo(
+    () => visibleColumns.filter((c) => c.isCharge && c.key !== "advanceRs"),
+    [visibleColumns]
+  );
+  const advanceCol = useMemo(
+    () => visibleColumns.find((c) => c.key === "advanceRs") ?? null,
     [visibleColumns]
   );
 
@@ -136,15 +181,7 @@ export default function RecordsPage() {
       );
     }
     if (col.type === "float") {
-      return (
-        <input
-          type="number"
-          step="0.01"
-          value={values[col.key] === "" || values[col.key] == null ? "" : String(values[col.key])}
-          onChange={(e) => setField(col.key, e.target.value)}
-          className="w-full bg-transparent px-2 py-2 text-right outline-none"
-        />
-      );
+      return <MoneyInput value={values[col.key]} onChange={(v) => setField(col.key, v)} />;
     }
     return (
       <input
@@ -242,17 +279,25 @@ export default function RecordsPage() {
               </table>
               <table className="w-full border-collapse text-sm">
                 <tbody>
-                  {renderRows(rightColumns)}
+                  {renderRows(chargeColumns)}
                   <tr className="h-11 border-t border-black/20 bg-paper/50">
                     <th className="w-[40%] px-3 py-0 text-left align-middle font-semibold text-navy">Total Rs.</th>
-                    <td className="px-3 py-0 text-right align-middle font-semibold">
-                      {totals.totalRs ? totals.totalRs.toLocaleString("en-US") : ""}
+                    <td className="px-3 py-0 text-right align-middle font-semibold tabular-nums">
+                      {formatAmount(totals.totalRs || 0)}
                     </td>
                   </tr>
+                  {advanceCol ? (
+                    <tr className="h-11 border-t border-black/10">
+                      <th className="w-[40%] bg-paper/80 px-3 py-0 text-left align-middle font-medium text-navy">
+                        {renderLabel(advanceCol)}
+                      </th>
+                      <td className="px-1 py-0 align-middle">{renderFieldInput(advanceCol)}</td>
+                    </tr>
+                  ) : null}
                   <tr className="h-11 border-t border-black/10 bg-paper/50">
                     <th className="w-[40%] px-3 py-0 text-left align-middle font-semibold text-navy">Balance Rs.</th>
-                    <td className="px-3 py-0 text-right align-middle font-semibold">
-                      {totals.balanceRs ? totals.balanceRs.toLocaleString("en-US") : ""}
+                    <td className="px-3 py-0 text-right align-middle font-semibold tabular-nums">
+                      {formatAmount(totals.balanceRs)}
                     </td>
                   </tr>
                 </tbody>

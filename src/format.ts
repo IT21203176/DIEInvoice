@@ -7,15 +7,14 @@ export function toNumber(value: unknown): number {
 }
 
 export function formatAmount(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "";
   const n = toNumber(value);
-  if (!n) return "";
-  return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  if (!Number.isFinite(n)) return "";
+  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export function formatAmountOrDash(value: unknown): string {
-  const n = toNumber(value);
-  if (!n) return "";
-  return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  return formatAmount(value);
 }
 
 export function formatDateDisplay(value: unknown): string {
