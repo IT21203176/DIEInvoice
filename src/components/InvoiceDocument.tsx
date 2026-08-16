@@ -77,7 +77,7 @@ function AmountValue({
   double?: boolean;
 }) {
   return (
-    <div className="invoice-amount">
+    <div className={double ? "invoice-amount invoice-amount-double" : "invoice-amount"}>
       {editing ? (
         <input
           type="number"
@@ -89,8 +89,6 @@ function AmountValue({
       ) : (
         <div className="invoice-amount-text">{display}</div>
       )}
-      <div className="invoice-amount-line" />
-      {double ? <div className="invoice-amount-line invoice-amount-line-double" /> : null}
     </div>
   );
 }
@@ -140,7 +138,7 @@ export default function InvoiceDocument({
 
   return (
     <div id="invoice-sheet" className="print-sheet">
-      <h1 className="text-center font-serif text-[42px] font-bold tracking-wide">{settings.companyName}</h1>
+      <h1 className="invoice-company-name">{settings.companyName}</h1>
       <p className="mt-1 text-center text-[18px] font-semibold underline decoration-1 underline-offset-4">
         {settings.documentTitle}
       </p>
@@ -324,7 +322,9 @@ export default function InvoiceDocument({
         <div className="invoice-rule" />
         <div className="invoice-total-row font-bold">
           <span>TOTAL Rs.</span>
-          <span>{formatAmount(total)}</span>
+          <div className="invoice-amount">
+            <div className="invoice-amount-text">{formatAmount(total)}</div>
+          </div>
         </div>
         <div className="invoice-rule" />
         <div className="invoice-total-row mt-3">

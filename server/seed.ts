@@ -55,7 +55,7 @@ async function seedOnce() {
 
   const settingsCount = await Settings.countDocuments();
   if (settingsCount === 0) {
-    await Settings.create({ companyName: "DIASON", documentTitle: "INVOICE" });
+    await Settings.create({ companyName: "DIASON ENTERPRISES", documentTitle: "INVOICE" });
   }
 }
 

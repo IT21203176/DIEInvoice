@@ -101,7 +101,7 @@ export default function InvoicePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#d9d3c7] pb-10">
+    <div className="invoice-print-root min-h-screen bg-[#d9d3c7] pb-10">
       <div className="no-print mx-auto flex max-w-[900px] flex-wrap items-center justify-between gap-3 px-4 py-4">
         <Link to="/invoices" className="text-sm font-medium text-navy hover:underline">
           ← View Invoices
