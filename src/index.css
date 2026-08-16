@@ -50,10 +50,10 @@ body {
   margin: 0;
   text-align: center;
   font-family: "Times New Roman", Times, serif;
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  line-height: 1.1;
+  letter-spacing: 0.04em;
+  line-height: 1.15;
 }
 
 .invoice-amount {

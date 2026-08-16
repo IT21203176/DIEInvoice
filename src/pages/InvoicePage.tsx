@@ -10,7 +10,7 @@ export default function InvoicePage() {
   const { id } = useParams<{ id: string }>();
   const [record, setRecord] = useState<InvoiceRecord | null>(null);
   const [columns, setColumns] = useState<ColumnDefinition[]>([]);
-  const [settings, setSettings] = useState<AppSettings>({ companyName: "DIASON", documentTitle: "INVOICE" });
+  const [settings, setSettings] = useState<AppSettings>({ companyName: "DIASON ENTERPRISES", documentTitle: "INVOICE" });
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Record<string, unknown>>({});
   const [remarks, setRemarks] = useState("");

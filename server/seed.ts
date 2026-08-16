@@ -53,6 +53,7 @@ async function seedOnce() {
     nextOrder += 10;
   }
 
+  await Settings.updateMany({}, { $set: { companyName: "DIASON ENTERPRISES" } });
   const settingsCount = await Settings.countDocuments();
   if (settingsCount === 0) {
     await Settings.create({ companyName: "DIASON ENTERPRISES", documentTitle: "INVOICE" });

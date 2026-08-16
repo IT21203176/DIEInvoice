@@ -6,7 +6,7 @@ export const settingsRouter = Router();
 settingsRouter.get("/", async (_req, res) => {
   let settings = await Settings.findOne();
   if (!settings) {
-    settings = await Settings.create({ companyName: "DIASON", documentTitle: "INVOICE" });
+    settings = await Settings.create({ companyName: "DIASON ENTERPRISES", documentTitle: "INVOICE" });
   }
   res.json({
     companyName: settings.companyName,
@@ -17,7 +17,7 @@ settingsRouter.get("/", async (_req, res) => {
 settingsRouter.patch("/", async (req, res) => {
   let settings = await Settings.findOne();
   if (!settings) {
-    settings = await Settings.create({ companyName: "DIASON", documentTitle: "INVOICE" });
+    settings = await Settings.create({ companyName: "DIASON ENTERPRISES", documentTitle: "INVOICE" });
   }
   if (typeof req.body.companyName === "string" && req.body.companyName.trim()) {
     settings.companyName = req.body.companyName.trim();

@@ -5,7 +5,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-paper">
       <header className="bg-navy text-white">
         <div className="mx-auto max-w-6xl px-6 py-14 text-center">
-          <h1 className="font-serif text-6xl tracking-wide sm:text-7xl">DIASON</h1>
+          <h1 className="font-serif text-5xl tracking-wide sm:text-6xl">DIASON ENTERPRISES</h1>
           <p className="mt-3 text-xl text-white/70 sm:text-2xl">Invoice Management</p>
         </div>
       </header>
