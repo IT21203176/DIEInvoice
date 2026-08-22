@@ -6,6 +6,7 @@ import { Column } from "../models/Column.js";
 import { computeTotals, toNumber } from "../totals.js";
 import type { ColumnDefinition } from "../defaults.js";
 import { parseInvoiceWorkbook } from "../excelImport.js";
+import { upsertParty } from "../parties.js";
 
 export const invoicesRouter = Router();
 
@@ -170,6 +171,9 @@ invoicesRouter.post("/import", upload.single("file"), async (req, res) => {
 
   if (docs.length > 0) {
     await Invoice.insertMany(docs);
+    for (const doc of toInsert) {
+      await upsertParty(doc.values.ms, doc.values.address);
+    }
   }
 
   res.json({
@@ -203,6 +207,7 @@ invoicesRouter.post("/", async (req, res) => {
     remarks,
     ...totals,
   });
+  await upsertParty(values.ms, values.address);
   res.status(201).json(serialize(doc));
 });
 
@@ -230,6 +235,7 @@ invoicesRouter.patch("/:id", async (req, res) => {
   doc.advanceRs = totals.advanceRs;
   doc.balanceRs = totals.balanceRs;
   await doc.save();
+  await upsertParty(values.ms, values.address);
   res.json(serialize(doc));
 });
 

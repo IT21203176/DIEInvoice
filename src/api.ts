@@ -1,4 +1,4 @@
-import type { AppSettings, ColumnDefinition, InvoiceListResponse, InvoiceRecord } from "./types";
+import type { AppSettings, ColumnDefinition, InvoiceListResponse, InvoiceRecord, PartyRecord } from "./types";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
@@ -48,6 +48,7 @@ export const api = {
     request<InvoiceRecord>(`/api/invoices/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
   deleteInvoice: (id: string) => request<{ ok: boolean }>(`/api/invoices/${id}`, { method: "DELETE" }),
   listColumns: () => request<ColumnDefinition[]>("/api/columns"),
+  listParties: () => request<PartyRecord[]>("/api/parties"),
   addColumn: (payload: { label: string; type: string; isCharge: boolean }) =>
     request<ColumnDefinition>("/api/columns", { method: "POST", body: JSON.stringify(payload) }),
   updateColumn: (id: string, payload: Partial<Pick<ColumnDefinition, "label" | "isCharge">>) =>

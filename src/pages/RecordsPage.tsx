@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
-import type { ColumnDefinition } from "../types";
+import type { ColumnDefinition, PartyRecord } from "../types";
 import { computeTotals, formatAmount, toDateInput, toNumber } from "../format";
 import AddColumnModal from "../components/AddColumnModal";
 import HomeIcon from "../components/HomeIcon";
+import MsCombobox from "../components/MsCombobox";
 
 function emptyValues(columns: ColumnDefinition[]) {
   const today = new Date().toISOString().slice(0, 10);
@@ -66,6 +67,7 @@ export default function RecordsPage() {
   const [error, setError] = useState("");
   const [addColOpen, setAddColOpen] = useState(false);
   const [editingCol, setEditingCol] = useState<ColumnDefinition | null>(null);
+  const [parties, setParties] = useState<PartyRecord[]>([]);
 
   const visibleColumns = useMemo(() => {
     const seen = new Set<string>();
@@ -98,8 +100,9 @@ export default function RecordsPage() {
     setLoading(true);
     setError("");
     try {
-      const cols = await api.listColumns();
+      const [cols, partyList] = await Promise.all([api.listColumns(), api.listParties()]);
       setColumns(cols);
+      setParties(partyList);
       setValues((prev) => {
         const next = emptyValues(cols);
         return Object.keys(prev).length ? { ...next, ...prev } : next;
@@ -165,7 +168,21 @@ export default function RecordsPage() {
     );
   }
 
+  function selectParty(name: string, address: string) {
+    setValues((prev) => ({ ...prev, ms: name, address }));
+  }
+
   function renderFieldInput(col: ColumnDefinition) {
+    if (col.key === "ms") {
+      return (
+        <MsCombobox
+          value={String(values.ms ?? "")}
+          parties={parties}
+          onChange={(name) => setField("ms", name)}
+          onSelect={selectParty}
+        />
+      );
+    }
     if (col.type === "date") {
       return (
         <input

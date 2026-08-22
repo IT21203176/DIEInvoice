@@ -1,6 +1,8 @@
 import { Column } from "./models/Column.js";
 import { Settings } from "./models/Settings.js";
 import { DEFAULT_COLUMNS } from "./defaults.js";
+import { syncPartiesFromInvoices } from "./parties.js";
+import { Party } from "./models/Party.js";
 
 let seeding: Promise<void> | null = null;
 
@@ -57,6 +59,11 @@ async function seedOnce() {
   const settingsCount = await Settings.countDocuments();
   if (settingsCount === 0) {
     await Settings.create({ companyName: "DIASON ENTERPRISES", documentTitle: "INVOICE" });
+  }
+
+  const partyCount = await Party.countDocuments();
+  if (partyCount === 0) {
+    await syncPartiesFromInvoices();
   }
 }
 

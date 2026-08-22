@@ -32,3 +32,9 @@ export interface AppSettings {
   companyName: string;
   documentTitle: string;
 }
+
+export interface PartyRecord {
+  id: string;
+  name: string;
+  address: string;
+}

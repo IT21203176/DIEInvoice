@@ -1,11 +1,13 @@
 import { useMemo } from "react";
-import type { AppSettings, ColumnDefinition, InvoiceRecord } from "../types";
+import type { AppSettings, ColumnDefinition, InvoiceRecord, PartyRecord } from "../types";
 import { formatAmount, formatAmountOrDash, formatDateDisplay, toNumber } from "../format";
+import MsCombobox from "./MsCombobox";
 
 interface Props {
   record: InvoiceRecord;
   columns: ColumnDefinition[];
   settings: AppSettings;
+  parties: PartyRecord[];
   editing: boolean;
   draft: Record<string, unknown>;
   remarks: string;
@@ -97,6 +99,7 @@ export default function InvoiceDocument({
   record,
   columns,
   settings,
+  parties,
   editing,
   draft,
   remarks,
@@ -149,12 +152,19 @@ export default function InvoiceDocument({
             <span>M/s.</span>
             <div className="font-bold">
               {editing ? (
-                <textarea
-                  rows={2}
-                  value={ms}
-                  onChange={(e) => onChange("ms", e.target.value)}
-                  className="w-72 border border-dashed border-gray-400 bg-yellow-50/60 p-1 font-bold outline-none"
-                />
+                <div className="w-72">
+                  <MsCombobox
+                    multiline
+                    value={ms}
+                    parties={parties}
+                    onChange={(name) => onChange("ms", name)}
+                    onSelect={(name, address) => {
+                      onChange("ms", name);
+                      onChange("address", address);
+                    }}
+                    className="border border-dashed border-gray-400 bg-yellow-50/60 p-1 font-bold"
+                  />
+                </div>
               ) : (
                 <>
                   {msLines.map((line, i) => (

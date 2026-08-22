@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { api } from "../api";
-import type { AppSettings, ColumnDefinition, InvoiceRecord } from "../types";
+import type { AppSettings, ColumnDefinition, InvoiceRecord, PartyRecord } from "../types";
 import InvoiceDocument from "../components/InvoiceDocument";
 
 export default function InvoicePage() {
@@ -17,15 +17,22 @@ export default function InvoicePage() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [parties, setParties] = useState<PartyRecord[]>([]);
 
   useEffect(() => {
     if (!id) return;
     void (async () => {
       try {
-        const [inv, cols, set] = await Promise.all([api.getInvoice(id), api.listColumns(), api.getSettings()]);
+        const [inv, cols, set, partyList] = await Promise.all([
+          api.getInvoice(id),
+          api.listColumns(),
+          api.getSettings(),
+          api.listParties(),
+        ]);
         setRecord(inv);
         setColumns(cols);
         setSettings(set);
+        setParties(partyList);
         setDraft(inv.values);
         setRemarks(inv.remarks);
       } catch (err) {
@@ -47,6 +54,7 @@ export default function InvoicePage() {
       setRecord(updated);
       setDraft(updated.values);
       setRemarks(updated.remarks);
+      setParties(await api.listParties());
       setEditing(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
@@ -149,6 +157,7 @@ export default function InvoicePage() {
         record={record}
         columns={columns}
         settings={settings}
+        parties={parties}
         editing={editing}
         draft={draft}
         remarks={remarks}

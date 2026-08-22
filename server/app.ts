@@ -6,6 +6,7 @@ import { ensureDefaults } from "./seed.js";
 import { invoicesRouter } from "./routes/invoices.js";
 import { columnsRouter } from "./routes/columns.js";
 import { settingsRouter } from "./routes/settings.js";
+import { partiesRouter } from "./routes/parties.js";
 
 const app = express();
 app.use(cors());
@@ -51,6 +52,7 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/invoices", invoicesRouter);
 app.use("/api/columns", columnsRouter);
 app.use("/api/settings", settingsRouter);
+app.use("/api/parties", partiesRouter);
 
 app.use("/api", (req, res) => {
   res.status(404).json({ error: `No route ${req.method} ${req.originalUrl}` });
