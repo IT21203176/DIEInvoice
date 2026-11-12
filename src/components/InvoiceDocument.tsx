@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import type { AppSettings, ColumnDefinition, InvoiceRecord, PartyRecord } from "../types";
 import { formatAmount, formatAmountOrDash, formatDateDisplay, toNumber } from "../format";
 import MsCombobox from "./MsCombobox";
+import companyLogo from "../images/Diason Enterprises Globe Logo.png";
 
 interface Props {
   record: InvoiceRecord;
@@ -141,7 +142,13 @@ export default function InvoiceDocument({
 
   return (
     <div id="invoice-sheet" className="print-sheet">
-      <h1 className="invoice-company-name">{settings.companyName}</h1>
+      <div className="invoice-company-logo-wrap">
+        <img
+          src={companyLogo}
+          alt={settings.companyName || "Diason Enterprises"}
+          className="invoice-company-logo"
+        />
+      </div>
       <p className="mt-1 text-center text-[18px] font-semibold underline decoration-1 underline-offset-4">
         {settings.documentTitle}
       </p>
